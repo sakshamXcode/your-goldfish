@@ -1,69 +1,34 @@
 @import "tailwindcss";
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Design tokens and minor overrides to match the locked design system */
+:root{
+  --color-primary-start: #FF6FAF;
+  --color-primary-end: #FFC3E0;
+  --color-accent-start: #A86EFF;
+  --color-accent-end: #D8B9FF;
+  --text-dark: #1B1B1B;
+  --text-muted: #6E6E6E;
+  --card-radius: 24px;
+  --glass-bg: rgba(255,255,255,0.12);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* A simple gradient utility we can reuse */
+.bg-pink-dream {
+  background: linear-gradient(135deg, var(--color-primary-start) 0%, var(--color-primary-end) 100%);
 }
-a:hover {
-  color: #535bf2;
+.bg-purple-mist {
+  background: linear-gradient(135deg, var(--color-accent-start) 0%, var(--color-accent-end) 100%);
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+/* Small global helpers */
+.app-shell {
   min-height: 100vh;
+  background: linear-gradient(180deg, #FFF0F6 0%, #FFFFFF 100%);
+  padding: 1.5rem;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Focus outlines accessible */
+:focus {
+  outline: 3px solid rgba(168,110,255,0.18);
+  outline-offset: 2px;
 }
