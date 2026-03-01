@@ -1,3 +1,41 @@
-DOCS
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Environment variables — NEVER commit these!
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.env
+frontend/.env
+server/.env
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Vercel
 .vercel
-node_modules
+
+# Misc
+DOCS
+*.log
+npm-debug.log*
+
+# Test scripts with secrets
+test_otp.mjs
