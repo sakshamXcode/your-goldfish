@@ -5,43 +5,19 @@ import useIdeas from "../features/ideas/useIdeas";
 import { useAuthContext } from "../contexts/AuthContext";
 
 function mapPlaceToIdea(place) {
-  // Be defensive about shape: support various field names
-  const name =
-    place.name ||
-    place.title ||
-    place.display_name ||
-    "Unnamed place";
-
-  const address =
-    place.address ||
-    place.formatted_address ||
-    place.vicinity ||
-    "";
-
-  const url =
-    place.url ||
-    place.website ||
-    place.maps_url ||
-    place.google_maps_url ||
-    null;
-
-  return {
-    title: name,
-    url,
-    category: "Food", // could later vary by type
-    address,
-  };
+  const name = place.name || place.title || place.display_name || "Unnamed place";
+  const address = place.address || place.formatted_address || place.vicinity || "";
+  const url = place.url || place.website || place.maps_url || place.google_maps_url || null;
+  return { title: name, url, category: "Food", address };
 }
 
 export default function PlacesSearch() {
   const { user } = useAuthContext();
   const user_id = user?.id || null;
-
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
   const [savingId, setSavingId] = useState(null);
   const [feedback, setFeedback] = useState("");
-
   const { results, loading, error, search } = usePlacesSearch();
   const { createIdea } = useIdeas({ user_id });
 
@@ -55,14 +31,12 @@ export default function PlacesSearch() {
     const mapped = mapPlaceToIdea(place);
     setSavingId(place.id || mapped.title);
     setFeedback("");
-
     try {
       await createIdea({
         title: mapped.title,
         url: mapped.url,
         category: mapped.category,
         added_by: user_id || "local_user",
-        // not sending address to backend to avoid schema mismatch
       });
       setFeedback(`Saved "${mapped.title}" to your board ✨`);
     } catch (e) {
@@ -74,68 +48,55 @@ export default function PlacesSearch() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 pb-24">
-      <h2 className="text-xl font-semibold mb-3">Find cafés & places</h2>
-      <p className="text-sm text-gray-600 mb-4">
-        Search for cozy cafés, rooftops, or fun spots and save them directly as ideas.
+    <div className="max-w-3xl mx-auto pb-24">
+      <h2 className="text-xl font-bold mb-2 animate-fade-in-up" style={{ color: 'var(--color-text-primary)' }}>
+        📍 Find Places
+      </h2>
+      <p className="text-sm mb-5 animate-fade-in-up" style={{ color: 'var(--color-text-muted)', animationDelay: '0.05s' }}>
+        Search for cozy cafés, rooftops, or fun spots and save them as ideas.
       </p>
 
-      <form
-        onSubmit={handleSearch}
-        className="bg-white rounded-2xl p-4 shadow-sm space-y-3"
-      >
+      <form onSubmit={handleSearch} className="glass-card-static p-5 space-y-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
             What are you looking for?
           </label>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+          <input value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="e.g. cafe, rooftop, pizza, date spot"
-            className="w-full p-3 rounded-lg border border-[#EFEFEF]"
-          />
+            className="input-glass" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Optional area / city
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+            Area / City <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>(optional)</span>
           </label>
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
+          <input value={location} onChange={(e) => setLocation(e.target.value)}
             placeholder="e.g. Bhubaneswar, KIIT, Patia"
-            className="w-full p-3 rounded-lg border border-[#EFEFEF]"
-          />
+            className="input-glass" />
         </div>
 
-        <div className="flex justify-end gap-2 items-center">
-          {error && (
-            <div className="text-xs text-red-500 mr-auto">{error}</div>
-          )}
-          <button
-            type="submit"
-            className="px-5 py-2 rounded-full bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white text-sm"
-            disabled={loading}
-          >
-            {loading ? "Searching…" : "Search places"}
+        <div className="flex justify-end gap-3 items-center">
+          {error && <div className="text-xs mr-auto" style={{ color: '#ef4444' }}>{error}</div>}
+          <button type="submit" className="btn-aurora text-sm" disabled={loading}>
+            {loading ? "Searching…" : "🔍 Search"}
           </button>
         </div>
       </form>
 
       {feedback && (
-        <div className="mt-3 text-xs text-green-600">{feedback}</div>
+        <div className="mt-3 text-xs px-3 py-2 rounded-xl" style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+          {feedback}
+        </div>
       )}
 
       {/* Results */}
-      <div className="mt-6 space-y-3">
-        {loading && (
-          <div className="text-sm text-gray-500">Searching…</div>
-        )}
+      <div className="mt-6 space-y-3 stagger-children">
+        {loading && <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Searching…</div>}
 
         {!loading && results.length === 0 && !error && (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
             No places yet. Try a search like{" "}
-            <span className="font-semibold">"cafe bhubaneswar"</span>.
+            <span className="font-semibold" style={{ color: 'var(--color-text-secondary)' }}>"cafe bhubaneswar"</span>.
           </div>
         )}
 
@@ -144,45 +105,34 @@ export default function PlacesSearch() {
           const rating = place.rating || place.score || null;
 
           return (
-            <div
-              key={place.id || mapped.title}
-              className="bg-white rounded-2xl p-4 shadow-sm flex justify-between gap-3 items-start"
-            >
+            <div key={place.id || mapped.title}
+              className="glass-card p-4 flex justify-between gap-3 items-start">
               <div className="min-w-0">
-                <div className="font-semibold text-sm sm:text-base">
+                <div className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
                   {mapped.title}
                 </div>
                 {mapped.address && (
-                  <div className="mt-1 text-xs text-gray-500 line-clamp-2">
+                  <div className="mt-1 text-xs line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
                     {mapped.address}
                   </div>
                 )}
                 {rating && (
-                  <div className="mt-1 text-xs text-yellow-600">
+                  <div className="mt-1 text-xs" style={{ color: '#facc15' }}>
                     ⭐ {rating}
                   </div>
                 )}
               </div>
-              <div className="flex flex-col gap-2 items-end">
+              <div className="flex flex-col gap-2 items-end flex-shrink-0">
                 {mapped.url && (
-                  <a
-                    href={mapped.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#A86EFF] underline"
-                  >
-                    View
+                  <a href={mapped.url} target="_blank" rel="noreferrer"
+                    className="text-xs font-medium" style={{ color: '#c084fc' }}>
+                    View ↗
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() => handleSave(place)}
-                  className="px-3 py-1 rounded-full bg-[#FFF0F6] text-[#FF6FAF] text-xs"
-                  disabled={savingId === (place.id || mapped.title)}
-                >
-                  {savingId === (place.id || mapped.title)
-                    ? "Saving…"
-                    : "Save as idea"}
+                <button type="button" onClick={() => handleSave(place)}
+                  className="pill pill-active text-xs"
+                  disabled={savingId === (place.id || mapped.title)}>
+                  {savingId === (place.id || mapped.title) ? "Saving…" : "💾 Save"}
                 </button>
               </div>
             </div>

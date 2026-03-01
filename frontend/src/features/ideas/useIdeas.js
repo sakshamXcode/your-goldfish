@@ -1,98 +1,96 @@
-// frontend/src/features/ideas/useIdeas.js
 import { useEffect, useState, useCallback } from "react";
+import { jsonFetch } from "../../lib/api";
+import { supabase } from "../../lib/supabaseClient";
 
-function fetchJson(url, opts = {}) {
-  return fetch(url, opts).then(async (r) => {
-    const txt = await r.text();
-    try {
-      return JSON.parse(txt);
-    } catch {
-      return txt;
-    }
-  });
-}
-
-/**
- * useIdeas
- * - loads ideas from /api/ideas_status
- * - lets you create new ideas via /api/ideas_create
- * - lets you update status (accepted/rejected/archived) via /api/ideas_handle
- *
- * usage:
- * const { ideas, loading, createIdea, updateIdeaStatus, reload } = useIdeas({ user_id, partner_id });
- */
-export default function useIdeas({ user_id = null, partner_id = null } = {}) {
+export default function useIdeas({ user_id = null } = {}) {
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (user_id) params.set("user_id", user_id);
-      if (partner_id) params.set("partner_id", partner_id);
-      const query = params.toString() ? `?${params.toString()}` : "";
-      const res = await fetchJson(`/api/ideas_status${query}`);
-      if (res && res.ok) {
-        setIdeas(res.ideas || []);
-      } else {
-        console.warn("ideas_status not ok:", res);
-        setIdeas([]);
-      }
-    } catch (err) {
-      console.error("load ideas failed:", err);
+      const res = await jsonFetch(`/ideas`);
+      setIdeas(res?.ideas || []);
+    } catch {
       setIdeas([]);
     } finally {
       setLoading(false);
     }
-  }, [user_id, partner_id]);
+  }, [user_id]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  async function createIdea({ title, url = null, category = "general", added_by = null }) {
-    const body = {
-      title,
-      url,
-      category,
-      added_by: added_by || user_id || "local_user",
+  // Realtime: listen for new ideas so the partner sees them instantly
+  useEffect(() => {
+    if (!user_id) return;
+
+    const channel = supabase.channel('ideas_updates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'ideas' },
+        (payload) => {
+          const newIdea = payload.new;
+          // Add the new idea if it's not already present and wasn't added by us
+          // (our own creates are already handled optimistically via createIdea)
+          if (newIdea.added_by !== user_id) {
+            setIdeas(prev => {
+              if (prev.find(i => i.id === newIdea.id)) return prev;
+              return [newIdea, ...prev];
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ideas' },
+        (payload) => {
+          const updated = payload.new;
+          setIdeas(prev =>
+            prev.map(i => i.id === updated.id ? { ...i, ...updated } : i)
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'ideas' },
+        (payload) => {
+          const deleted = payload.old;
+          setIdeas(prev => prev.filter(i => i.id !== deleted.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    const res = await fetchJson("/api/ideas_create", {
+  }, [user_id]);
+
+  async function createIdea(payload) {
+    const res = await jsonFetch("/ideas", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
-    if (!res || !res.ok || !res.idea) {
-      throw new Error(res?.error || "Failed to create idea");
-    }
-
-    // optimistic prepend
+    if (!res?.ok) throw new Error(res?.error || "create_failed");
     setIdeas((prev) => [res.idea, ...prev]);
     return res.idea;
   }
 
   async function updateIdeaStatus({ idea_id, action }) {
-    const res = await fetchJson("/api/ideas_handle", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await jsonFetch("/ideas", {
+      method: "PATCH",
       body: JSON.stringify({ idea_id, action }),
     });
 
-    if (!res || !res.ok) {
-      throw new Error(res?.error || "Failed to update idea");
-    }
-
-    // very simple client update: if server returns idea, use it; else reload
+    if (!res?.ok) throw new Error(res?.error || "update_failed");
+    // Update locally instead of full reload
     if (res.idea) {
-      setIdeas((prev) =>
-        prev.map((it) => (it.id === res.idea.id ? res.idea : it))
+      setIdeas(prev =>
+        prev.map(i => i.id === res.idea.id ? res.idea : i)
       );
-    } else {
-      load();
     }
-
     return res;
   }
 
@@ -102,6 +100,5 @@ export default function useIdeas({ user_id = null, partner_id = null } = {}) {
     reload: load,
     createIdea,
     updateIdeaStatus,
-    setIdeas, // in case UI wants to reorder locally
   };
 }

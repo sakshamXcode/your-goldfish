@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { jsonFetch } from "../lib/api";
 import { useNavigate } from "react-router-dom";
 import usePartner from "../hooks/usePartner";
 
@@ -16,30 +17,53 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    const isMagicLink = window.location.hash.includes('access_token=');
+
+    // 1. Fetch initial session (handles both standard loads & magic link resolution natively in Supabase)
+    supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
+      if (error) {
+        console.error("Error getting session:", error.message);
+      }
       setSession(data?.session ?? null);
       setUser(data?.session?.user ?? null);
-      setLoading(false);
+      window.__SUPABASE_TOKEN__ = data?.session?.access_token ?? null;
+      
+      // CRITICAL FIX: If we see a magic link in the URL, DO NOT release the loading lock. 
+      // Supabase is currently exchanging that token for a session in the background. 
+      // If we release the lock here, ProtectedRoute will instantly bounce the user back to /auth/login.
+      if (!isMagicLink) {
+        setLoading(false);
+      }
     });
 
-    const { subscription } = supabase.auth.onAuthStateChange((event, payload) => {
-      const s = payload?.session ?? null;
-      setSession(s);
-      setUser(s?.user ?? null);
+    // 2. Listen for future auth events
+    // In Supabase v2, the callback receives (event, session) where session IS the session directly.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      window.__SUPABASE_TOKEN__ = session?.access_token ?? null;
+      
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'SIGNED_OUT') {
+         setLoading(false); // Failsafe unlock once the auth state securely finalizes
+      }
 
-      if (event === "SIGNED_IN" && s?.user) {
-        fetch("/api/auth_upsert", {
+      // If they just signed in, securely upsert their profile to our DB
+      if (event === "SIGNED_IN" && session?.user) {
+        jsonFetch("/auth_upsert", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: s.user.id,
-            email: s.user.email || null,
-            phone: s.user.phone || null,
-            display_name: s.user.user_metadata?.full_name || null,
-            avatar_url: s.user.user_metadata?.avatar_url || null,
+            email: session.user.email || null,
+            phone: session.user.phone || null,
+            display_name: session.user.user_metadata?.full_name || null,
+            avatar_url: session.user.user_metadata?.avatar_url || null,
           }),
-        }).catch(() => {});
+        }).then((res) => {
+          if (res?.ok && res?.user?.username) {
+            // Merge username into user state
+            setUser(prev => prev ? { ...prev, username: res.user.username } : prev);
+          }
+        }).catch((err) => console.warn("auth_upsert failed:", err));
       }
     });
 
@@ -53,6 +77,7 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
+    window.__SUPABASE_TOKEN__ = null;
     navigate("/auth/login");
   }
 

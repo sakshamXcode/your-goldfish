@@ -1,45 +1,53 @@
-// frontend/src/features/timeline/useTimeline.js
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import { fetchTimeline } from "../../lib/api";
 
-function fetchJson(url, opts = {}) {
-  return fetch(url, opts).then(async (r) => {
-    const txt = await r.text();
-    try {
-      return JSON.parse(txt);
-    } catch {
-      return txt;
-    }
-  });
-}
-
-export default function useTimeline({ user_id = null } = {}) {
+export default function useTimeline({ pair_id = null } = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (user_id) params.set("user_id", user_id);
-      const query = params.toString() ? `?${params.toString()}` : "";
-      const res = await fetchJson(`/api/timeline_list${query}`);
-      if (res && res.ok) {
-        setItems(res.timeline || []);
-      } else {
-        console.warn("timeline_list not ok:", res);
-        setItems([]);
-      }
-    } catch (err) {
-      console.error("load timeline failed:", err);
+    if (!pair_id) {
       setItems([]);
-    } finally {
       setLoading(false);
+      return;
     }
-  }, [user_id]);
+
+    setLoading(true);
+    const res = await fetchTimeline(pair_id);
+    setItems(res?.timeline || []);
+    setLoading(false);
+  }, [pair_id]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  return { items, loading, reload: load, setItems };
+  useEffect(() => {
+    if (!pair_id) return;
+
+    const channel = supabase
+      .channel(`timeline:${pair_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "timeline_events",
+          filter: `pair_id=eq.${pair_id}`,
+        },
+        (payload) => {
+          setItems((prev) => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  }, [pair_id]);
+
+  return { items, loading, reload: load };
 }

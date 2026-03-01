@@ -1,139 +1,212 @@
+import PlacesSearch from "../pages/PlacesSearch";
+import { supabase } from "./supabaseClient";
+
 // frontend/src/lib/api.js
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 /**
  * Generic JSON fetch wrapper
  */
-async function jsonFetch(path, opts = {}) {
-  const url = path.startsWith('http') ? path : `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+export async function jsonFetch(path, opts = {}) {
+  const url = path.startsWith("http")
+    ? path
+    : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+
   const config = {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     ...opts,
   };
 
+  // Securely attach the JWT access token to every outgoing request
+  const token = window.__SUPABASE_TOKEN__;
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
   const res = await fetch(url, config);
   const data = await res.json().catch(() => null);
+
   if (!res.ok) {
-    const err = new Error(data?.error || data?.message || `Request failed: ${res.status}`);
+    const err = new Error(
+      data?.error || data?.message || `Request failed: ${res.status}`
+    );
     err.status = res.status;
     err.body = data;
     throw err;
   }
+
   return data;
 }
 
-/** Preview */
+/* =========================
+   Preview
+========================= */
 export async function fetchPreview(linkUrl) {
   if (!linkUrl) return null;
   try {
     const encoded = encodeURIComponent(linkUrl);
-    const data = await jsonFetch(`/preview?url=${encoded}`, { method: 'GET' });
-    return data?.data || null;
+    const res = await jsonFetch(`/preview?url=${encoded}`, { method: "GET" });
+    return res?.data || null;
   } catch (err) {
-    console.warn('[fetchPreview] fallback null', err?.message || err);
+    console.warn("[fetchPreview]", err?.message || err);
     return null;
   }
 }
 
-/** Invite creation */
-export async function createInviteAPI({ to_phone, from_user_id, message }) {
+/* =========================
+   Partner Code Pairing
+========================= */
+export async function getCodeAPI() {
   try {
-    const data = await jsonFetch('/invite', {
-      method: 'POST',
-      body: JSON.stringify({ to_phone, from_user_id, message }),
-    });
+    const data = await jsonFetch("/invites?action=get_code");
     return data;
   } catch (err) {
-    return { ok: false, error: err.message || 'invite_failed' };
+    return { ok: false, error: err.message || "failed_to_get_code" };
   }
 }
 
-/** Accept invite */
-export async function acceptInviteAPI({ token, accepting_user_id }) {
+export async function requestPartnerAPI(code) {
   try {
-    const data = await jsonFetch('/invite_accept', {
-      method: 'POST',
-      body: JSON.stringify({ token, accepting_user_id }),
+    return await jsonFetch("/invites?action=request_partner", {
+      method: "POST",
+      body: JSON.stringify({ code: code.trim().toUpperCase() }),
     });
-    return data;
   } catch (err) {
-    return { ok: false, error: err.message || 'accept_failed' };
+    return { ok: false, error: err.message || "request_failed" };
   }
 }
 
-/** Create idea (server side) */
+export async function acceptPartnerAPI(token) {
+  try {
+    return await jsonFetch("/invites?action=accept_partner", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  } catch (err) {
+    return { ok: false, error: err.message || "accept_failed" };
+  }
+}
+
+/* =========================
+   Ideas
+========================= */
 export async function createIdeaAPI(payload) {
   try {
-    const data = await jsonFetch('/ideas_create', {
-      method: 'POST',
+    return await jsonFetch("/ideas", {
+      method: "POST",
       body: JSON.stringify(payload),
     });
-    return data;
   } catch (err) {
-    return { ok: false, error: err.message || 'create_idea_failed' };
+    return { ok: false, error: err.message || "create_idea_failed" };
   }
 }
 
-/** Places search */
-export async function placesSearch(query) {
-  if (!query) return [];
+export async function updateIdeaStatusAPI(payload) {
   try {
-    const encoded = encodeURIComponent(query);
-    const data = await jsonFetch(`/places_search?query=${encoded}`, { method: 'GET' });
-    return data?.results || [];
+    return await jsonFetch("/ideas", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
   } catch (err) {
-    console.warn('[placesSearch] failed', err?.message || err);
-    return [];
+    return { ok: false, error: err.message || "update_idea_failed" };
   }
 }
 
-/** Notifications (get list) */
-export async function fetchNotifications(userId) {
-  if (!userId) return { ok: false, notifications: [] };
+/* =========================
+   Notifications
+========================= */
+export async function fetchNotifications({ user_id, to_phone }) {
+  const params = new URLSearchParams();
+  if (user_id) params.set("user_id", user_id);
+  if (to_phone) params.set("to_phone", to_phone);
+
   try {
-    const data = await jsonFetch(`/notifications?user_id=${encodeURIComponent(userId)}`, { method: 'GET' });
-    return data;
+    return await jsonFetch(`/notifications?${params.toString()}`, {
+      method: "GET",
+    });
   } catch (err) {
-    console.warn('[fetchNotifications] failed', err?.message || err);
+    console.warn("[fetchNotifications]", err?.message || err);
     return { ok: false, notifications: [] };
   }
 }
 
-/** Notification handle */
-export async function handleNotification(notificationId, action) {
+export async function handleNotificationByToken({ token, action }) {
   try {
-    const data = await jsonFetch('/notifications_handle', {
-      method: 'POST',
-      body: JSON.stringify({ notification_id: notificationId, action }),
+    return await jsonFetch("/notifications", {
+      method: "POST",
+      body: JSON.stringify({ token, action }),
     });
-    return data;
   } catch (err) {
-    return { ok: false, error: err.message || 'notification_handle_failed' };
+    return { ok: false, error: err.message || "notification_failed" };
   }
 }
 
-/** Upload helper (not mandatory here but handy) */
-export async function createSignedUploadAPI(fileName, fileType) {
-  const res = await fetch(`${API_BASE}/upload`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileName, fileType })
-  });
-  const json = await res.json().catch(()=>null);
-  if (!res.ok) throw new Error(json?.error || 'signed_url_failed');
-  return json;
+/* =========================
+   Timeline (Unified)
+========================= */
+export async function fetchTimeline(pair_id) {
+  if (!pair_id) return { ok: true, timeline: [] };
+  try {
+    return await jsonFetch(`/timeline?pair_id=${pair_id}`, {
+      method: "GET",
+    });
+  } catch (err) {
+    console.warn("[fetchTimeline]", err?.message || err);
+    return { ok: false, timeline: [] };
+  }
 }
 
-/** Default export (for modules importing default) */
+/* =========================
+   Upload
+========================= */
+// Upload is handled directly in component via FormData now
+export async function uploadImageAPI(file) {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers = {};
+    const token = window.__SUPABASE_TOKEN__;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const url = `${API_BASE}/upload`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers, // Attach JWT, but do NOT set Content-Type for FormData
+      body: formData, 
+    });
+
+    const dataRes = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(dataRes?.error || "upload_failed");
+    }
+    return dataRes;
+  } catch (err) {
+    console.error("upload API error", err);
+    throw err;
+  }
+}
+
+/* =========================
+   Default export
+========================= */
 export default {
   fetchPreview,
-  createInviteAPI,
-  acceptInviteAPI,
+  getCodeAPI,
+  requestPartnerAPI,
+  acceptPartnerAPI,
   createIdeaAPI,
-  placesSearch,
+  updateIdeaStatusAPI,
   fetchNotifications,
-  handleNotification,
-  createSignedUploadAPI,
+  handleNotificationByToken,
+  fetchTimeline,
+  PlacesSearch,
+  uploadImageAPI,
 };

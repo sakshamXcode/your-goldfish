@@ -1,5 +1,5 @@
-// frontend/src/features/uploads/useUpload.js
 import { useState, useCallback } from "react";
+import { uploadImageAPI } from "../../lib/api";
 
 export default function useUpload() {
   const [loading, setLoading] = useState(false);
@@ -10,19 +10,7 @@ export default function useUpload() {
     setLoading(true);
     setError("");
     try {
-      const form = new FormData();
-      form.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: form,
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json.ok === false) {
-        throw new Error(json.error || "Upload failed");
-      }
-
+      const json = await uploadImageAPI(file);
       return json.file; // { path, url }
     } catch (e) {
       console.error("upload failed", e);

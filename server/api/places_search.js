@@ -9,6 +9,15 @@ const FOURSQUARE_KEY = process.env.FOURSQUARE_KEY;
  * Returns: { ok, results: [...] }
  */
 export default async function handler(req, res) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({});
+  }
+
   try {
     const query = (req.method === "GET")
       ? (req.query?.query || new URL(req.url, `http://${req.headers.host}`).searchParams.get("query"))

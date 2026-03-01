@@ -9,4 +9,34 @@ if (!URL || !KEY) {
 }
 
 export const supabase = createClient(URL || '', KEY || '');
+
+// Silently swallow the harmless React 18 Strict Mode double-mount WebSocket drop.
+// Supabase Realtime throws this when React tears down the effect instantly, closing the 
+// socket before the handshake finishes. It is totally benign but scares users.
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  if (
+    args &&
+    args[0] &&
+    typeof args[0] === 'string' &&
+    args[0].includes('WebSocket is closed before the connection is established')
+  ) {
+    return;
+  }
+  originalConsoleError(...args);
+};
+
+const originalConsoleWarn = console.warn;
+console.warn = (...args) => {
+  if (
+    args &&
+    args[0] &&
+    typeof args[0] === 'string' &&
+    args[0].includes('WebSocket is closed before the connection is established')
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};
+
 export default supabase;

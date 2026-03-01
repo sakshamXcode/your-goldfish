@@ -1,14 +1,20 @@
 import { supabaseServer } from "../lib/supabase.js";
 
 export default async function handler(req, res) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({});
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ ok: false });
   }
 
-  const user_id = req.query.user_id;
-  if (!user_id) {
-    return res.status(400).json({ ok: false, error: "missing_user_id" });
-  }
+  const user_id = req.user.id;
 
   try {
     const { data, error } = await supabaseServer

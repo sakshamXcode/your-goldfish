@@ -9,10 +9,8 @@ export default function InvitePage() {
   const { user, loading: authLoading } = useAuthContext();
 
   const [invite, setInvite] = useState(null);
-  const [status, setStatus] = useState("loading"); 
-  // loading | ready | accepted | invalid | error
+  const [status, setStatus] = useState("loading");
 
-  // 1️⃣ Fetch invite details
   useEffect(() => {
     if (!token) {
       setStatus("invalid");
@@ -46,7 +44,6 @@ export default function InvitePage() {
     loadInvite();
   }, [token]);
 
-  // 2️⃣ Auto-accept if logged in
   async function handleAccept() {
     if (!user || !token) return;
 
@@ -73,62 +70,67 @@ export default function InvitePage() {
     }
   }
 
-  // 3️⃣ Handle auth redirect
   function handleLogin() {
     navigate(`/auth/login?redirect=/invite/${token}`);
   }
 
-  // ⏳ Loading
+  // Loading
   if (status === "loading" || authLoading) {
-    return <div className="p-8 text-center text-gray-500">Loading invite…</div>;
+    return (
+      <div className="max-w-md mx-auto mt-20 text-center animate-fade-in-up">
+        <div className="text-3xl mb-3 animate-float">🐠</div>
+        <div style={{ color: 'var(--color-text-muted)' }}>Loading invite…</div>
+      </div>
+    );
   }
 
-  // ❌ Invalid
+  // Invalid
   if (status === "invalid") {
-    return <div className="p-8 text-center text-red-500">Invite not found or expired</div>;
+    return (
+      <div className="max-w-md mx-auto mt-20 text-center animate-fade-in-up">
+        <div className="text-3xl mb-3">❌</div>
+        <div style={{ color: '#ef4444' }}>Invite not found or expired</div>
+      </div>
+    );
   }
 
-  // ✅ Already accepted
+  // Accepted
   if (status === "accepted") {
     return (
-      <div className="p-8 text-center">
-        <h2 className="text-xl font-semibold">You’re already connected 💕</h2>
-        <button
-          onClick={() => navigate("/")}
-          className="mt-4 px-6 py-2 rounded-full bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white"
-        >
+      <div className="max-w-md mx-auto mt-20 text-center animate-fade-in-up">
+        <div className="text-4xl mb-4 animate-float">💕</div>
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
+          You're already connected!
+        </h2>
+        <button onClick={() => navigate("/")} className="btn-aurora text-sm px-6 py-3">
           Go Home
         </button>
       </div>
     );
   }
 
-  // ✨ Ready to accept
+  // Ready
   return (
-    <div className="max-w-md mx-auto p-6 text-center">
-      <div className="mb-4 text-2xl">🐟</div>
+    <div className="max-w-md mx-auto mt-16 px-4 text-center animate-fade-in-up">
+      <div className="text-4xl mb-4 animate-float">🐟</div>
 
-      <h2 className="text-xl font-semibold mb-2">
+      <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
         {invite.from_user} invited you
       </h2>
 
       {invite.message && (
-        <p className="text-gray-600 mb-6">{invite.message}</p>
+        <p className="mb-6" style={{ color: 'var(--color-text-muted)' }}>{invite.message}</p>
       )}
 
       {!user ? (
-        <button
-          onClick={handleLogin}
-          className="px-6 py-3 rounded-full bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white"
-        >
+        <button onClick={handleLogin} className="btn-aurora text-sm px-6 py-3">
           Login to accept
         </button>
       ) : (
-        <button
-          onClick={handleAccept}
-          className="px-6 py-3 rounded-full bg-green-500 text-white"
-        >
-          Accept invite
+        <button onClick={handleAccept}
+          className="px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300"
+          style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
+          ✓ Accept invite
         </button>
       )}
     </div>

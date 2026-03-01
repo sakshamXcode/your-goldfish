@@ -1,188 +1,90 @@
 // frontend/src/pages/InviteLanding.jsx
-import React, { useEffect, useState} from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../contexts/AuthContext";
-
-
-function fetchJson(url, opts = {}) {
-  return fetch(url, opts).then(async (r) => {
-    const txt = await r.text();
-    try { return JSON.parse(txt); } catch { return txt; }
-  });
-}
+import { requestPartnerAPI } from "../lib/api";
 
 export default function InviteLanding() {
-  const { token } = useParams();
+  const { token } = useParams(); // 'token' here is actually the 8-letter code
   const navigate = useNavigate();
-const { user } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
+  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
 
-  const [state, setState] = useState({
-    loading: true,
-    error: null,
-    invite: null,
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const res = await fetchJson(`/api/invite_lookup?token=${encodeURIComponent(token)}`);
-        if (!cancelled) {
-          if (!res || !res.ok || !res.invite) {
-            setState({ loading: false, error: "Invalid or expired invite", invite: null });
-          } else {
-            setState({ loading: false, error: null, invite: res.invite });
-          }
-        }
-      } catch (err) {
-        if (!cancelled) setState({ loading: false, error: String(err), invite: null });
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [token]);
-
-  async function handleAccept() {
-    if (!state.invite) return;
+  async function handleConnect() {
+    if (!token || token.length !== 8) return;
+    setLoading(true);
+    setError(null);
     try {
-      const accepting_user_id = user?.id || "user_saksham"; // dev default
-      const res = await fetchJson("/api/invite_accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, accepting_user_id }),
-      });
-
-      if (!res || !res.ok) {
-        alert("Failed to accept invite.");
-        return;
+      const res = await requestPartnerAPI(token);
+      if (res?.ok) {
+        setSuccess(true);
+        setTimeout(() => navigate("/"), 2000);
+      } else {
+        setError(res?.error || "Failed to connect.");
       }
-
-      // best-effort mark notifications read
-      try {
-        await fetchJson("/api/notifications_handle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "mark_read_by_token", token }),
-        });
-      } catch (e) {
-        console.log(e)
-      }
-
-      alert("Invite accepted!");
-      navigate("/"); // go home (or your main board)
     } catch (err) {
-      console.error(err);
-      alert("Error accepting invite: " + err.message);
+      setError(err.message || "Failed to send connection request.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function handleReject() {
-    try {
-      const res = await fetchJson("/api/invite_reject", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!res || !res.ok) {
-        alert("Failed to reject invite.");
-        return;
-      }
-
-      try {
-        await fetchJson("/api/notifications_handle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "mark_read_by_token", token }),
-        });
-      } catch (e) {
-        console.log(e)
-      }
-
-      alert("Invite rejected.");
-      navigate("/");
-    } catch (err) {
-      console.error(err);
-      alert("Error rejecting invite: " + err.message);
-    }
+  function handleLogin() {
+    // Save the redirect url so they come back to this specifically formatted code page
+    navigate(`/auth/login?redirect=/invite/${token}`);
   }
 
-  const { loading, error, invite } = state;
+  if (authLoading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF0F6] via-[#FFE7F2] to-white px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-6">
-        {loading && <div className="text-sm text-gray-500">Loading invite…</div>}
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 text-center">
+        <div className="text-4xl mb-4">💌</div>
+        <h2 className="text-2xl font-semibold mb-2">You've been invited!</h2>
+        <p className="text-sm text-gray-600 mb-6">
+          Your partner wants to connect with you on UsBook to share date ideas, memories, and places together.
+        </p>
+
+        <div className="mb-6 rounded-xl bg-[#FFF0F6] p-4 text-center">
+          <div className="text-xs text-[#FF6FAF] font-bold uppercase tracking-widest mb-1">Connection Code</div>
+          <div className="text-2xl tracking-widest font-mono font-bold text-gray-800">
+            {token}
+          </div>
+        </div>
+
         {error && (
-          <div className="text-center">
-            <div className="text-lg font-semibold text-red-500 mb-2">Invite problem</div>
-            <div className="text-sm text-gray-600 mb-4">{error}</div>
-            <button
-              onClick={() => navigate("/")}
-              className="px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-sm"
-            >
-              Go home
-            </button>
+          <div className="mb-4 text-sm text-red-500 bg-red-50 p-3 rounded-lg">
+            {error}
           </div>
         )}
 
-        {!loading && !error && invite && (
-          <div>
-            <h2 className="text-2xl font-semibold mb-2">Join Your Goldfish</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              <strong>{invite.from_user || "Your partner"}</strong> invited you to share date ideas, reels and places
-              in your private UsBook.
-            </p>
-
-            <div className="mb-4 rounded-xl bg-[#FFF0F6] p-3 text-sm text-gray-700">
-              <div className="font-medium mb-1">Message</div>
-              <div>{invite.message || "No custom message, just vibes 💌"}</div>
-            </div>
-
-            <div className="mb-4 text-xs text-gray-500 space-y-1">
-              <div><strong>Invite to:</strong> {invite.to_phone}</div>
-              <div><strong>Expires:</strong> {invite.expires_at ? new Date(invite.expires_at).toLocaleString() : "Not set"}</div>
-              {invite.accepted && (
-                <div className="text-green-600">
-                  Already accepted by {invite.accepted_by || "someone"} at{" "}
-                  {invite.accepted_at ? new Date(invite.accepted_at).toLocaleString() : ""}
-                </div>
-              )}
-              {invite.rejected && (
-                <div className="text-red-500">
-                  Already rejected at {invite.rejected_at ? new Date(invite.rejected_at).toLocaleString() : ""}
-                </div>
-              )}
-            </div>
-
-            {!invite.accepted && !invite.rejected && (
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={handleAccept}
-                  className="flex-1 px-4 py-2 rounded-full bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white text-sm font-medium"
-                >
-                  Accept invite
-                </button>
-                <button
-                  onClick={handleReject}
-                  className="px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-sm"
-                >
-                  Decline
-                </button>
-              </div>
-            )}
-
-            {(invite.accepted || invite.rejected) && (
-              <div className="mt-4">
-                <button
-                  onClick={() => navigate("/")}
-                  className="px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-sm"
-                >
-                  Back home
-                </button>
-              </div>
-            )}
+        {success ? (
+          <div className="text-green-600 font-medium p-3 bg-green-50 rounded-lg">
+            Connection requested successfully! Taking you home...
           </div>
+        ) : !user ? (
+          <div className="space-y-3">
+            <button
+              onClick={handleLogin}
+              className="w-full px-6 py-3 rounded-xl bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white font-medium shadow-md shadow-pink-200"
+            >
+              Log in to Connect
+            </button>
+            <p className="text-xs text-gray-500">
+              You'll need a free account to pair with your partner.
+            </p>
+          </div>
+        ) : (
+          <button
+            onClick={handleConnect}
+            disabled={loading}
+            className="w-full px-6 py-3 rounded-xl bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white font-medium shadow-md shadow-pink-200 disabled:opacity-50"
+          >
+            {loading ? "Connecting..." : "Tap to Connect"}
+          </button>
         )}
       </div>
     </div>

@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 import TagChip from '../../components/TagChip';
 import PrimaryButton from '../../components/PrimaryButton';
-import { fetchPreview, createIdeaAPI } from '../../lib/api';
-import { createSignedUpload, uploadFileToSignedUrl } from '../../lib/uploadClient';
+import { fetchPreview, createIdeaAPI, uploadImageAPI } from '../../lib/api';
 import { useAuthContext } from '../../contexts/AuthContext';
 import demoData from '../../demo/demoData';
 
@@ -40,15 +39,8 @@ export default function IdeaForm({ onSaved }) {
   async function handleUploadImage(file) {
     if (!file) return null;
     try {
-      const signed = await createSignedUpload(file.name, file.type);
-      if (!signed?.signedUrl) {
-        console.warn('Signed URL missing, fallback to null');
-        return null;
-      }
-      await uploadFileToSignedUrl(signed.signedUrl, file, file.type);
-      // Return the storage path; server stores in bucket at path
-      // Frontend can request public URL via server endpoint if needed.
-      return signed.path || null;
+      const resp = await uploadImageAPI(file);
+      return resp?.file?.url || resp?.file?.path || null;
     } catch (err) {
       console.error('upload failed', err);
       return null;
@@ -69,18 +61,13 @@ export default function IdeaForm({ onSaved }) {
         imageUrl = await handleUploadImage(imageFile);
       }
 
-      const payload = {
-        title: title.trim(),
-        category,
-        link,
-        link_preview: preview || null,
-        image_url: imageUrl,
-        is_private: false,
-        description: null,
-        tags: [category],
-        from_user_id: userId,
-        // To notify partner you can include to_user_id if you have partner id
-      };
+const payload = {
+  title: title.trim(),
+  url: link.trim() || null,
+  category,
+  added_by: userId,
+  image_url: imageUrl || null,
+};
 
       const resp = await createIdeaAPI(payload);
       if (resp?.ok) {

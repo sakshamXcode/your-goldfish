@@ -6,11 +6,21 @@ import { supabaseServer } from "../lib/supabase.js";
  * Body: { from_user, to_user, message }
  */
 export default async function handler(req, res) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({});
+  }
+
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method_not_allowed" });
 
   try {
-    const { from_user, to_user, message } = req.body || {};
-    if (!from_user || !to_user || !message) return res.status(400).json({ ok: false, error: "missing_params" });
+    const { to_user, message } = req.body || {};
+    const from_user = req.user.id;
+    if (!to_user || !message) return res.status(400).json({ ok: false, error: "missing_params" });
 
     const row = { from_user, to_user, message, created_at: new Date().toISOString() };
     const { data, error } = await supabaseServer.from("chat").insert([row]).select().single();

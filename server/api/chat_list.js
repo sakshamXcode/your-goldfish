@@ -7,19 +7,30 @@ import { supabaseServer } from "../lib/supabase.js";
  * Otherwise returns recent conversations for user_id.
  */
 export default async function handler(req, res) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({});
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ ok: false, error: "method_not_allowed" });
+  }
+
   try {
     const q = new URL(req.url, `http://${req.headers.host}`).searchParams;
-    const user_id = q.get("user_id");
+    const user_id = req.user.id;
     const peer_id = q.get("peer_id");
-
-    if (!user_id) return res.status(400).json({ ok: false, error: "missing_user_id" });
 
     if (peer_id) {
       // return direct chat between user_id and peer_id
       const { data, error } = await supabaseServer
         .from("chat")
         .select("*")
-        .or(`(from_user.eq.${user_id},to_user.eq.${user_id})`)
+        .or(`from_user.eq.${user_id},to_user.eq.${user_id}`)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -33,7 +44,7 @@ export default async function handler(req, res) {
       const { data, error } = await supabaseServer
         .from("chat")
         .select("*")
-        .or(`(from_user.eq.${user_id},to_user.eq.${user_id})`)
+        .or(`from_user.eq.${user_id},to_user.eq.${user_id}`)
         .order("created_at", { ascending: false })
         .limit(200);
 

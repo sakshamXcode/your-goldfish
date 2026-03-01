@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { jsonFetch } from "../lib/api";
 
 export default function usePartner(user_id) {
   const [partner, setPartner] = useState(null);
@@ -12,8 +13,7 @@ export default function usePartner(user_id) {
     }
 
     setLoading(true);
-    fetch(`/api/partner_get?user_id=${user_id}`)
-      .then((r) => r.json())
+    jsonFetch(`/partner_get`)
       .then((j) => {
         setPartner(j.partner || null);
       })

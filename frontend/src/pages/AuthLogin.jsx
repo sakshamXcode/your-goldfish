@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
 export default function AuthLogin() {
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const navigate = useNavigate();
@@ -14,15 +14,14 @@ export default function AuthLogin() {
     setLoading(true);
     setStatus(null);
     try {
-      // Ensure phone has country code, e.g. +91...
-      const { data, error } = await supabase.auth.signInWithOtp({ phone: phone.trim() });
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { shouldCreateUser: true },
+      });
       if (error) {
         setStatus({ ok: false, text: error.message || String(error) });
       } else {
-        // signInWithOtp returns data with maybe 'user' info; OTP sent
-        setStatus({ ok: true, text: 'OTP sent — check your messages' });
-        // Navigate to verify page where user will input the OTP code
-        navigate('/auth/verify', { state: { phone: phone.trim() } });
+        navigate('/auth/verify', { state: { email: email.trim() } });
       }
     } catch (err) {
       setStatus({ ok: false, text: err?.message || String(err) });
@@ -32,27 +31,47 @@ export default function AuthLogin() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h2 className="text-xl font-semibold mb-4">Sign in with phone</h2>
-      <form onSubmit={sendOtp} className="flex flex-col gap-3">
-        <input
-          placeholder="+91 98765 43210"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="p-3 border rounded-lg"
-          required
-        />
-        <button type="submit" className="px-4 py-3 bg-gradient-to-br from-[#FF6FAF] to-[#A86EFF] text-white rounded-lg">
-          {loading ? 'Sending...' : 'Send OTP'}
+    <div className="max-w-md mx-auto mt-16 px-4">
+      <div className="text-center mb-8 animate-fade-in-up">
+        <div className="text-5xl mb-4 animate-float">🐠</div>
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+          Welcome Back
+        </h2>
+        <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
+          Sign in to your Goldfish account
+        </p>
+      </div>
+
+      <form onSubmit={sendOtp} className="glass-card-static p-6 flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+            Email Address
+          </label>
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input-glass"
+            required
+          />
+        </div>
+        <button type="submit" disabled={loading} className="btn-aurora py-3.5 text-sm">
+          {loading ? 'Sending...' : '✉️ Send Login Code'}
         </button>
 
         {status && (
-          <div className={`text-sm ${status.ok ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="text-sm p-3 rounded-xl" style={{
+            background: status.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+            color: status.ok ? '#22c55e' : '#ef4444',
+          }}>
             {status.text}
           </div>
         )}
 
-        <div className="text-xs text-gray-500 mt-2">Make sure the phone includes country code (e.g. +91)</div>
+        <div className="text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>
+          We'll send a secure login code to your inbox.
+        </div>
       </form>
     </div>
   );

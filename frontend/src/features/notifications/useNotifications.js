@@ -1,24 +1,17 @@
-// frontend/src/features/notifications/useNotifications.js
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { fetchNotifications } from "../../lib/api";
+import {
+  fetchNotifications,
+  handleNotificationByToken,
+} from "../../lib/api";
 import demoData from "../../demo/demoData";
 
-/**
- * Notifications hook
- * - Backend API is the source of truth
- * - Supabase realtime only triggers reload()
- */
-export default function useNotifications({ user_id = null, to_phone = null } = {}) {
+export default function useNotifications({ user_id = null, to_email = null } = {}) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  /**
-   * Load notifications from backend API
-   */
   const load = useCallback(async () => {
-    // Demo mode
-    if (!user_id && !to_phone) {
+    if (!user_id && !to_email) {
       setNotifications(demoData.notifications || []);
       setLoading(false);
       return;
@@ -26,150 +19,64 @@ export default function useNotifications({ user_id = null, to_phone = null } = {
 
     setLoading(true);
     try {
-      const res = await fetchNotifications({ user_id, to_phone });
-      if (res?.ok) {
-        setNotifications(res.notifications || []);
-      } else {
-        console.warn("fetchNotifications not ok:", res);
-        setNotifications([]);
-      }
-    } catch (err) {
-      console.warn("notifications fetch failed", err);
+      const res = await fetchNotifications({ user_id, to_email });
+      setNotifications(res?.notifications || []);
+    } catch {
       setNotifications(demoData.notifications || []);
     } finally {
       setLoading(false);
     }
-  }, [user_id, to_phone]);
+  }, [user_id, to_email]);
 
-  /**
-   * Initial load
-   */
   useEffect(() => {
     load();
   }, [load]);
 
-  /**
-   * Realtime subscription
-   * Only used to trigger reload()
-   */
   useEffect(() => {
-    if (!user_id && !to_phone) return;
+    if (!user_id && !to_email) return;
 
     const channel = supabase
-      .channel("realtime:notifications")
+      .channel("notifications")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-        },
-        (payload) => {
-          const row = payload.new || payload.old;
-          if (!row) return;
-
-          // Filter for this user
-          if (user_id && row.user_id && row.user_id !== user_id) return;
-          if (!user_id && to_phone && row.to_phone && row.to_phone !== to_phone) return;
-
-          // Reload from backend
-          load();
-        }
+        { event: "*", schema: "public", table: "notifications" },
+        () => load()
       )
-      .subscribe((status) => {
-        console.log("notifications realtime:", status);
-      });
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      // In React 18 Strict Mode, components mount/unmount rapidly. 
+      // Supabase .removeChannel() can throw a websocket closed error if invoked 
+      // before the connection establishes. We swallow it silently to keep console clean.
+      supabase.removeChannel(channel).catch(() => {});
     };
-  }, [user_id, to_phone, load]);
+  }, [user_id, to_email, load]);
 
-  /**
-   * Accept invite
-   */
-  async function acceptInvite({ token, accepting_user_id }) {
-    if (!token) throw new Error("Missing token for acceptInvite");
 
-    const res = await fetch("/api/invite_accept", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, accepting_user_id }),
-    });
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.ok === false) {
-      throw new Error(json.error || "Failed to accept invite");
-    }
-
-    await load();
-    return json;
-  }
-
-  /**
-   * Reject / dismiss invite
-   */
-  async function rejectInvite({ token }) {
-    if (!token) throw new Error("Missing token for rejectInvite");
-
-    const res = await fetch("/api/notifications_handle", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "dismiss",
-        token,
-      }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.ok === false) {
-      throw new Error(json.error || "Failed to reject invite");
-    }
-
-    await load();
-    return json;
-  }
-
-  /**
-   * Mark notification read by token
-   * Optimistic UI + backend sync
-   */
   async function markReadByToken(token) {
-    if (!token) return;
-
-    // Optimistic UI
     setNotifications((prev) =>
       prev.map((n) =>
         n.payload?.token === token ? { ...n, read: true } : n
       )
     );
 
-    const res = await fetch("/api/notifications_handle", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "mark_read_by_token",
-        token,
-      }),
+    const res = await handleNotificationByToken({
+      token,
+      action: "mark_read_by_token",
     });
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.ok === false) {
-      // rollback if needed
+    if (!res.ok) {
       await load();
-      throw new Error(json.error || "Failed to mark notification read");
+      throw new Error(res.error);
     }
-
-    return json;
   }
 
   return {
     notifications,
     loading,
-    acceptInvite,
-    rejectInvite,
     markReadByToken,
     refresh: load,
-    setNotifications, // exposed intentionally
+    setNotifications,
   };
 }
