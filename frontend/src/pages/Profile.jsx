@@ -118,9 +118,9 @@ export default function Profile() {
               onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}>
               💬 Share
             </button>
-            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/invite/${myCode}`); alert('Copied!'); }}
+            <button onClick={handleCopyCode}
               className="btn-ghost text-sm px-5">
-              📋 Copy Link
+              {copied ? '✅ Copied!' : '📋 Copy Code'}
             </button>
           </div>
 
