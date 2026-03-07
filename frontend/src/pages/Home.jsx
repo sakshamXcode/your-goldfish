@@ -15,8 +15,16 @@ export default function Home() {
   const hasPartner = Boolean(partner);
   const navigate = useNavigate();
 
-  const { ideas, loading, updateIdeaStatus } = useIdeas({ user_id });
+  const { ideas, loading, updateIdeaStatus, voteIdea } = useIdeas({ user_id });
   const { items: timeline, loading: timelineLoading } = useTimeline({ pair_id });
+
+  async function handleVote(idea_id, vote) {
+    try {
+      await voteIdea({ idea_id, vote });
+    } catch (err) {
+      console.error("vote failed", err);
+    }
+  }
 
   async function handleMarkDone(idea) {
     try {
@@ -34,8 +42,8 @@ export default function Home() {
     }
   }
 
-  const timelinePreview = timeline.slice(0, 3);
-  const activeIdeas = ideas.filter(i => i.status === 'active' || !i.status);
+  const timelinePreview = timeline.slice(0, 5); // Show a few more in preview
+  const activeIdeas = ideas.filter(i => i.status === 'active' || i.status === 'priority' || !i.status);
   const doneIdeas = ideas.filter(i => i.status === 'done');
 
   return (
@@ -125,7 +133,13 @@ export default function Home() {
 
           <div className="space-y-2 stagger-children">
             {timelinePreview.map((e) => (
-              <TimelinePreviewItem key={e.id} event={e} />
+              <TimelinePreviewItem 
+                key={e.id} 
+                event={e} 
+                onVote={(v) => handleVote(e.payload?.idea_id, v)}
+                currentUserId={user_id}
+                ideas={ideas}
+              />
             ))}
           </div>
         </div>
@@ -154,14 +168,25 @@ export default function Home() {
       {/* Ideas grid */}
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
         {loading && <SkeletonLoader count={3} className="h-64" />}
-        {!loading && ideas.map((idea) => (
-          <IdeaCard
-            key={idea.id}
-            idea={idea}
-            onPrimaryAction={() => handleMarkDone(idea)}
-            onSecondaryAction={() => handleArchive(idea)}
-          />
-        ))}
+        {!loading && activeIdeas.map((idea) => {
+          const isFromPartner = idea.added_by !== user_id;
+          const userVote = idea.votes?.[user_id];
+          const hasVoted = Boolean(userVote);
+          
+          return (
+            <IdeaCard
+              key={idea.id}
+              idea={{
+                ...idea,
+                showVoteActions: isFromPartner && !hasVoted,
+                waitingForPartner: !isFromPartner && !idea.votes?.[partner?.id],
+                onVote: (vote) => handleVote(idea.id, vote)
+              }}
+              onPrimaryAction={() => handleMarkDone(idea)}
+              onSecondaryAction={() => handleArchive(idea)}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -267,7 +292,7 @@ function OnboardingCard({ user }) {
   );
 }
 
-function TimelinePreviewItem({ event }) {
+function TimelinePreviewItem({ event, onVote, currentUserId, ideas }) {
   const icons = {
     idea_added: '💡', idea_done: '✅', invite_accepted: '🎉'
   };
@@ -277,12 +302,30 @@ function TimelinePreviewItem({ event }) {
     : event.type === 'invite_accepted' ? 'Invite accepted'
     : event.type;
 
+  const ideaId = event.payload?.idea_id;
+  const idea = ideas.find(i => i.id === ideaId);
+  const isFromPartner = event.actor_id !== currentUserId;
+  const showVote = event.type === 'idea_added' && isFromPartner && idea && !idea.votes?.[currentUserId];
+
   return (
-    <div className="glass-card-static p-3 flex items-center gap-3">
-      <span className="text-base">{icon}</span>
-      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-        {text}
-      </span>
+    <div className="glass-card-static p-3 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <span className="text-base">{icon}</span>
+        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {text}
+        </span>
+      </div>
+      
+      {showVote && (
+        <div className="flex gap-2">
+          <button onClick={() => onVote('yes')} className="text-[10px] px-2 py-1 rounded-lg bg-aurora text-white font-bold">
+            Let's Go
+          </button>
+          <button onClick={() => onVote('no')} className="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400">
+            No
+          </button>
+        </div>
+      )}
     </div>
   );
 }

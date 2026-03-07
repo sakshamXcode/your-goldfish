@@ -94,6 +94,7 @@ export default async function handler(req, res) {
           added_by,
           pair_id: pair?.id || null,
           status: "active",
+          votes: { [added_by]: "yes" } // Initial vote from creator
         })
         .select()
         .single();
@@ -115,6 +116,21 @@ export default async function handler(req, res) {
             image_url: data.image_url || null,
           },
         });
+
+        // Also create a notification for the partner
+        const partner_id = pair.user_a === added_by ? pair.user_b : pair.user_a;
+        if (partner_id) {
+          await supabaseServer.from("notifications").insert({
+            user_id: partner_id,
+            type: "idea_vote_request",
+            text: `New idea: "${title}". Let's go?`,
+            payload: {
+              idea_id: data.id,
+              title: data.title,
+              added_by_name: req.user.user_metadata?.full_name || "Partner"
+            }
+          });
+        }
       }
 
       return res.status(200).json({ ok: true, idea: data });
@@ -137,6 +153,51 @@ export default async function handler(req, res) {
         update = { status: "done", done_at: new Date().toISOString() };
       } else if (action === "archive") {
         update = { status: "archived" };
+      } else if (action === "vote") {
+        const { vote } = req.body;
+        if (!vote) return res.status(400).json({ ok: false, error: "missing_vote" });
+
+        // Get current idea to update votes JSON
+        const { data: currentIdea, error: fetchError } = await supabaseServer
+          .from("ideas")
+          .select("*")
+          .eq("id", idea_id)
+          .single();
+
+        if (fetchError || !currentIdea) {
+          console.error("fetch idea error", fetchError);
+          return res.status(404).json({ ok: false, error: "idea_not_found" });
+        }
+
+        const newVotes = { ...(currentIdea.votes || {}), [user_id]: vote };
+        update = { votes: newVotes };
+
+        // Check if both partners voted 'yes'
+        if (currentIdea.pair_id) {
+          const { data: pair } = await supabaseServer
+            .from("partners")
+            .select("*")
+            .eq("id", currentIdea.pair_id)
+            .single();
+
+          if (pair) {
+            const bothVotedYes = newVotes[pair.user_a] === "yes" && newVotes[pair.user_b] === "yes";
+            if (bothVotedYes) {
+              update.status = "priority";
+              
+              // Timeline event for reaching Priority
+              await supabaseServer.from("timeline_events").insert({
+                pair_id: currentIdea.pair_id,
+                type: "idea_priority",
+                actor_id: user_id,
+                payload: {
+                  idea_id: idea_id,
+                  title: currentIdea.title, // Note: currentIdea might need title in select
+                },
+              });
+            }
+          }
+        }
       } else {
         return res.status(400).json({ ok: false, error: "unknown_action" });
       }

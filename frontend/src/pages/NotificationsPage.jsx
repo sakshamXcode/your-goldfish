@@ -4,11 +4,13 @@ import useNotifications from "../features/notifications/useNotifications";
 import { useAuthContext } from "../contexts/AuthContext";
 import { acceptPartnerAPI, handleNotificationByToken } from "../lib/api";
 import { useNavigate } from "react-router-dom";
+import useIdeas from "../features/ideas/useIdeas";
 
 const typeConfig = {
   partner_request: { icon: '💘', label: 'Connection Request', color: '#ec4899' },
   chat: { icon: '💬', label: 'New Message', color: '#8b5cf6' },
   idea_added: { icon: '💡', label: 'New Idea', color: '#f59e0b' },
+  idea_vote_request: { icon: '🚀', label: 'Let\'s Go?', color: '#c084fc' },
   default: { icon: '🔔', label: 'Notification', color: '#60a5fa' },
 };
 
@@ -42,6 +44,19 @@ export default function NotificationsPage() {
       window.location.reload();
     } catch (e) {
       console.error("decline failed", e);
+    }
+  }
+
+  const { voteIdea } = useIdeas({ user_id });
+
+  async function onVote(n, vote) {
+    const ideaId = n.payload?.idea_id;
+    try {
+      await voteIdea({ idea_id: ideaId, vote });
+      await handleNotificationByToken({ token: n.payload?.token || n.id, action: "mark_read_by_token" });
+      window.location.reload();
+    } catch (e) {
+      console.error("vote failed", e);
     }
   }
 
@@ -112,6 +127,19 @@ export default function NotificationsPage() {
                   <button onClick={() => onDecline(n)}
                     className="btn-ghost flex-1 md:flex-none text-sm px-6 py-2">
                     Decline
+                  </button>
+                </div>
+              )}
+
+              {!n.handled && n.type === "idea_vote_request" && (
+                <div className="flex gap-2 w-full md:w-auto">
+                  <button onClick={() => onVote(n, 'yes')}
+                    className="btn-aurora flex-1 md:flex-none text-sm px-4 py-2">
+                    Let's Go!
+                  </button>
+                  <button onClick={() => onVote(n, 'no')}
+                    className="btn-ghost flex-1 md:flex-none text-sm px-4 py-2">
+                    Not now
                   </button>
                 </div>
               )}

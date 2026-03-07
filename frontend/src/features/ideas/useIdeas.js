@@ -94,11 +94,27 @@ export default function useIdeas({ user_id = null } = {}) {
     return res;
   }
 
+  async function voteIdea({ idea_id, vote }) {
+    const res = await jsonFetch("/ideas", {
+      method: "PATCH",
+      body: JSON.stringify({ idea_id, action: "vote", vote }),
+    });
+
+    if (!res?.ok) throw new Error(res?.error || "vote_failed");
+    if (res.idea) {
+      setIdeas(prev =>
+        prev.map(i => i.id === res.idea.id ? res.idea : i)
+      );
+    }
+    return res;
+  }
+
   return {
     ideas,
     loading,
     reload: load,
     createIdea,
     updateIdeaStatus,
+    voteIdea,
   };
 }

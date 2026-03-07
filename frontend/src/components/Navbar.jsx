@@ -40,15 +40,6 @@ const navItems = [
       </svg>
     ),
   },
-  {
-    to: "/places",
-    label: "Explore",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-      </svg>
-    ),
-  },
 ];
 
 export default function NavBar() {

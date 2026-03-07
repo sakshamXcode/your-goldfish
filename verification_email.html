@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Code</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0a0a0f;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #ffffff;
+    }
+    .email-wrapper {
+      width: 100%;
+      background-color: #0a0a0f;
+      padding: 40px 0;
+    }
+    .email-container {
+      max-width: 480px;
+      margin: 0 auto;
+      background-color: #12121e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+    .header {
+      padding: 40px 40px 20px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 24px;
+      display: block;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 800;
+      margin: 0;
+      background: linear-gradient(135deg, #FF6FAF, #A86EFF, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: #c084fc; /* Fallback */
+    }
+    .content {
+      padding: 0 40px 40px;
+      text-align: center;
+    }
+    .message {
+      font-size: 16px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-top: 16px;
+    }
+    .code-container {
+      margin: 32px 0;
+      padding: 24px;
+      background: rgba(139, 92, 246, 0.05); /* Very subtle purple tint */
+      border: 1px solid rgba(139, 92, 246, 0.15);
+      border-radius: 16px;
+    }
+    .code {
+      font-family: 'Inter', 'Menlo', 'Monaco', 'Courier New', monospace;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 6px;
+      color: #ffffff;
+      margin: 0;
+    }
+    .footer {
+      padding: 32px 40px;
+      background-color: rgba(255, 255, 255, 0.02);
+      text-align: center;
+      font-size: 12px;
+      color: #64748b;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .footer a {
+      color: #c084fc;
+      text-decoration: none;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: linear-gradient(135deg, #FF6FAF, #A86EFF);
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 9999px;
+      font-weight: 600;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <span class="logo">🐠</span>
+        <h1 class="title">Verification Code</h1>
+      </div>
+      <div class="content">
+        <p class="message">
+          Welcome back to Your Goldfish! Use the code below to complete your sign-in.
+        </p>
+        
+        <div class="code-container">
+          <p class="code">{{ .Token }}</p>
+        </div>
+        
+        <p class="message" style="font-size: 14px;">
+          This code will expire in 10 minutes. If you didn't request this, you can safely ignore this email.
+        </p>
+      </div>
+      <div class="footer">
+        &copy; 2024 Your Goldfish. All rights reserved.<br>
+        Built with love for goldfishes everywhere.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
