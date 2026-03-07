@@ -33,18 +33,18 @@ function vercelHandler(handlerModule) {
 
 // ── Import all serverless functions ────────────────────────────────
 const modules = await Promise.all([
-  import('./api/auth_upsert.js'),
-  import('./api/chat_list.js'),
-  import('./api/chat_send.js'),
-  import('./api/ideas.js'),
-  import('./api/invites.js'),
-  import('./api/notifications.js'),
-  import('./api/partner_get.js'),
-  import('./api/places_search.js'),
-  import('./api/preview.js'),
-  import('./api/timeline.js'),
-  import('./api/upload.js'),
-  import('./api/username_check.js'),
+  import('../api/auth_upsert.js'),
+  import('../api/chat_list.js'),
+  import('../api/chat_send.js'),
+  import('../api/ideas.js'),
+  import('../api/invites.js'),
+  import('../api/notifications.js'),
+  import('../api/partner_get.js'),
+  import('../api/places_search.js'),
+  import('../api/preview.js'),
+  import('../api/timeline.js'),
+  import('../api/upload.js'),
+  import('../api/username_check.js'),
 ]);
 
 const [
