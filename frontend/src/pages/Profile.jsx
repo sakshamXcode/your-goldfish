@@ -87,67 +87,65 @@ export default function Profile() {
       </div>
 
       {/* Connection Code */}
-      {!partner && (
-        <div className="glass-card-static p-6 mb-4 animate-fade-in-up" style={{
-          animationDelay: '0.1s',
-          background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(236,72,153,0.04))',
-        }}>
-          <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Your Connection Code</h3>
-          <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>Share this with your partner to connect.</p>
+      <div className="glass-card-static p-6 mb-4 animate-fade-in-up" style={{
+        animationDelay: '0.1s',
+        background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(236,72,153,0.04))',
+      }}>
+        <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Your Connection Code</h3>
+        <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>Share this with your partner to connect.</p>
 
-          <div 
-            onClick={handleCopyCode}
-            className="group relative glass-card-static p-4 text-center tracking-[0.3em] font-mono font-bold text-xl mb-4 cursor-pointer transition-all duration-300 hover:scale-[1.02]" 
-            style={{ 
-              color: '#c084fc',
-              border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.06)',
-              background: copied ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.03)'
-            }}>
-            {myCode || '• • • • • • • •'}
-            
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] px-2 py-1 rounded text-white tracking-normal font-sans">
-              {copied ? 'Copied!' : 'Click to copy'}
-            </div>
-          </div>
-
-          <div className="flex gap-2 mb-5">
-            <button onClick={handleShare}
-              className="flex-1 py-3 rounded-xl font-medium text-sm transition-all duration-300"
-              style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.25)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}>
-              💬 Share
-            </button>
-            <button onClick={handleCopyCode}
-              className="btn-ghost text-sm px-5">
-              {copied ? '✅ Copied!' : '📋 Copy Code'}
-            </button>
-          </div>
-
-          <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Have your partner's code?</p>
-            <div className="flex gap-2">
-              <input type="text" value={partnerCode}
-                onChange={(e) => setPartnerCode(e.target.value.toUpperCase())}
-                placeholder="ABCD1234" maxLength={8}
-                className="input-glass flex-1 uppercase tracking-widest font-mono text-center text-sm"
-              />
-              <button onClick={handleConnect} disabled={loading || partnerCode.length !== 8}
-                className="btn-aurora text-sm px-5">
-                {loading ? '...' : 'Connect'}
-              </button>
-            </div>
-            {status && (
-              <div className="mt-3 text-xs p-3 rounded-xl" style={{
-                background: status.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                color: status.ok ? '#22c55e' : '#ef4444',
-              }}>
-                {status.text}
-              </div>
-            )}
+        <div 
+          onClick={handleCopyCode}
+          className="group relative glass-card-static p-4 text-center tracking-[0.3em] font-mono font-bold text-xl mb-4 cursor-pointer transition-all duration-300 hover:scale-[1.02]" 
+          style={{ 
+            color: '#c084fc',
+            border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.06)',
+            background: copied ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.03)'
+          }}>
+          {myCode || '• • • • • • • •'}
+          
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] px-2 py-1 rounded text-white tracking-normal font-sans">
+            {copied ? 'Copied!' : 'Click to copy'}
           </div>
         </div>
-      )}
+
+        <div className="flex gap-2 mb-5">
+          <button onClick={handleShare}
+            className="flex-1 py-3 rounded-xl font-medium text-sm transition-all duration-300"
+            style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.25)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.15)'; }}>
+            💬 Share
+          </button>
+          <button onClick={handleCopyCode}
+            className="btn-ghost text-sm px-5">
+            {copied ? '✅ Copied!' : '📋 Copy Code'}
+          </button>
+        </div>
+
+        <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Have your partner's code?</p>
+          <div className="flex gap-2">
+            <input type="text" value={partnerCode}
+              onChange={(e) => setPartnerCode(e.target.value.toUpperCase())}
+              placeholder="ABCD1234" maxLength={8}
+              className="input-glass flex-1 uppercase tracking-widest font-mono text-center text-sm"
+            />
+            <button onClick={handleConnect} disabled={loading || partnerCode.length !== 8}
+              className="btn-aurora text-sm px-5">
+              {loading ? '...' : 'Connect'}
+            </button>
+          </div>
+          {status && (
+            <div className="mt-3 text-xs p-3 rounded-xl" style={{
+              background: status.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              color: status.ok ? '#22c55e' : '#ef4444',
+            }}>
+              {status.text}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Sign Out */}
       <button onClick={signOut}
