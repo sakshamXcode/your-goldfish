@@ -9,6 +9,8 @@ export default function Profile() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (user?.id) {
       getCodeAPI().then(res => {
@@ -32,6 +34,13 @@ export default function Profile() {
       setStatus({ ok: false, text: res?.error || 'Failed to send request.' });
     }
     setLoading(false);
+  }
+
+  function handleCopyCode() {
+    if (!myCode) return;
+    navigator.clipboard.writeText(myCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   function handleShare() {
@@ -86,8 +95,19 @@ export default function Profile() {
           <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Your Connection Code</h3>
           <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>Share this with your partner to connect.</p>
 
-          <div className="glass-card-static p-4 text-center tracking-[0.3em] font-mono font-bold text-xl mb-4" style={{ color: '#c084fc' }}>
+          <div 
+            onClick={handleCopyCode}
+            className="group relative glass-card-static p-4 text-center tracking-[0.3em] font-mono font-bold text-xl mb-4 cursor-pointer transition-all duration-300 hover:scale-[1.02]" 
+            style={{ 
+              color: '#c084fc',
+              border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.06)',
+              background: copied ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.03)'
+            }}>
             {myCode || '• • • • • • • •'}
+            
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] px-2 py-1 rounded text-white tracking-normal font-sans">
+              {copied ? 'Copied!' : 'Click to copy'}
+            </div>
           </div>
 
           <div className="flex gap-2 mb-5">
